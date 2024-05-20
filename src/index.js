@@ -36,19 +36,7 @@ var last_episode_title;
 var next_episode;
 var last_page;
 
-db.get('SELECT episode,title FROM episodes ORDER BY episode DESC LIMIT 1;', (err, latest) => {
-  if (err) {
-    console.error(err.message);
-    res.status(500).send('Internal server error');
-  } else {
-    last_episode = parseInt(latest['episode']);
-    last_episode_title = latest['title'];
-    next_episode = last_episode + 1;
-    last_page = last_episode % 10 == 0 ? Math.floor(last_episode / 10) : Math.floor(last_episode / 10) + 1;
-  }
-});
-
-app.get('/', (req, res) => {
+function getData(req, res, next) {
   db.get('SELECT episode,title FROM episodes ORDER BY episode DESC LIMIT 1;', (err, latest) => {
     if (err) {
       console.error(err.message);
@@ -58,8 +46,12 @@ app.get('/', (req, res) => {
       last_episode_title = latest['title'];
       next_episode = last_episode + 1;
       last_page = last_episode % 10 == 0 ? Math.floor(last_episode / 10) : Math.floor(last_episode / 10) + 1;
+      next();
     }
   });
+}
+
+app.get('/', getData, (req, res) => {
   res.write('\nThe latest RunningMan episode is ' + last_episode + ' - ' + last_episode_title);
   res.write('\n\n# To get the title and link of RunningMan episode between 001 and ' + last_episode);
   res.write('\n$ curl -LX GET rm.freaks.dev/ep/001');
@@ -78,7 +70,7 @@ app.get('/', (req, res) => {
   res.send();
 });
 
-app.get('/ep', (req, res) => {
+app.get('/ep', getData, (req, res) => {
   const page = req.query.page;
   if (page) {
     db.all('SELECT * FROM episodes LIMIT 10 OFFSET ?;', [(page - 1) * 10], (err, rows) => {
@@ -88,7 +80,7 @@ app.get('/ep', (req, res) => {
       } else if (page > last_page) {
         res.status(404).send('Page not found');
       } else {
-        res.send(rows);
+        res.send(JSON.stringify(rows, null, "  "));
       }
     });
   } else {
@@ -115,7 +107,7 @@ app.get('/ep/:episode', (req, res) => {
     } else if (open) {
       res.redirect(row['link']);
     } else {
-      res.send(row);
+      res.send(JSON.stringify(row, null, "  "));
     }
   });
 });
@@ -131,7 +123,7 @@ app.post('/ep',authentication, (req, res) => {
         console.error(err.message);
         res.status(500).send('Internal server error');
       } else {
-        res.status(201).send({ episode, title, link });
+        res.status(201).send(JSON.stringify({ episode, title, link }, null, "  "));
       }
     });
   }
@@ -151,7 +143,7 @@ app.put('/ep/:episode', authentication, (req, res) => {
       } else if (this.changes === 0) {
         res.status(404).send('Episode not found');
       } else {
-        res.status(200).send({ episode, title, link });
+        res.status(200).send(JSON.stringify({ episode, title, link }, null, "  "));
       }
     });
   }
