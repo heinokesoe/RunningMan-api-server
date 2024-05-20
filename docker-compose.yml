@@ -1,0 +1,10 @@
+version: "3"
+services:
+  runningman-api-server:
+    image: heinokesoe/runningman-api-server:latest
+    name: runningman-api-server
+    environment:
+      USERNAME: ""    # default is admin
+      PASSWORD: ""    # default is admin
+    ports:
+      - "3000:3000"
